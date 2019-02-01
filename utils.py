@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import copy
 from math import sin, cos
-
+import re
 
 
 def attnMask(energy, batch_lengths):
@@ -12,16 +12,6 @@ def attnMask(energy, batch_lengths):
     for i, length in enumerate(batch_lengths):
             masked_energy[i, :, length:] = -np.inf
     return masked_energy
-
-
-
-def outputMask(x, batch_lengths, max_len):
-    mask = torch.ones_like(x)
-    for i, length in enumerate(batch_lengths):
-        if length < max_len:
-            mask[i, -(max_len-length):, :] = 0
-    return mask
-
 
 
 def positionalEncoding(x):
@@ -33,25 +23,87 @@ def positionalEncoding(x):
         return x + PE
     
     
+def sort_batch(batch):
+    batch_lengths = torch.sum(batch!=0, dim=-1)
+    sorted_lengths, sorted_indices = torch.sort(batch_lengths, descending=True)
+    sorted_batch = batch[sorted_indices]
     
-def sort_batch(batch, batch_lengths):
-    batch_lengths = torch.LongTensor(batch_lengths)
-    lengths, sorted_idx = batch_lengths.sort(0, descending=True)
-    ordered_batch = batch[sorted_idx]
-    
-    return ordered_batch, lengths, sorted_idx
-    
+    return sorted_batch, sorted_lengths, sorted_indices
     
     
-def restore_batch(batch, context_lengths, sorted_idx):
-    restored_batch = batch.clone()
-    restored_lengths = [ 0 for _ in context_lengths ]
+def restore_batch(sorted_batch, sorted_indices):
+    restored_batch = torch.zeros_like(sorted_batch)
     
-    for i, j in enumerate(sorted_idx):
-        restored_batch[j] = batch[i]
-        restored_lengths[j] = context_lengths[i]
+    for i, j in enumerate(sorted_indices):
+        restored_batch[j] = sorted_batch[i]
 
-    return restored_batch, restored_lengths
+    return restored_batch
+
+
+def alignment(tensor, texts):
+    max_len = max([tensor.size(1), texts.size(1)])
+    
+    pad_tensor = torch.zeros( len(tensor), max_len, tensor.size(2) )
+    for i, data in enumerate(tensor):
+        for j, row in enumerate(data):
+            pad_tensor[i, j, :len(row)] = row
+            
+    pad_texts = torch.zeros( len(texts), max_len, dtype=torch.long )
+    for i, text in enumerate(texts):
+        pad_texts[i,:len(text)] = text
+
+    return pad_tensor, pad_texts
+
+
+                  
+             
+        
+        
+        
+        
+        
+        
+        
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r"’", "'", text)
+    text = re.sub(r" i'm ", " i am ", text)
+    text = re.sub(r" im ", " i am ", text)
+    text = re.sub(r" he's ", " he is ", text)
+    text = re.sub(r" ain't ", " are not ", text)
+    text = re.sub(r" she's ", " she is ", text)
+    text = re.sub(r" it's ", " it is ", text)
+    text = re.sub(r" that's ", " that is ", text)
+    text = re.sub(r" what's ", " what is ", text)
+    text = re.sub(r" where's ", " where is ", text)
+    text = re.sub(r" how's ", " how is ", text)
+    text = re.sub(r"\'ll", " will ", text)
+    text = re.sub(r"\'ve", " have ", text)
+    text = re.sub(r"\'re", " are ", text)
+    text = re.sub(r"\'d", " would ", text)
+    text = re.sub(r"\'re", " are ", text)
+    text = re.sub(r" won't ", " will not ", text)
+    text = re.sub(r" can't ", " can not ", text)
+    text = re.sub(r"n't ", " not ", text)
+    text = re.sub(r" couldnt ", " could not ", text)
+    text = re.sub(r" shouldnt ", " should not ", text)
+    text = re.sub(r" didnt ", " did not ", text)
+    text = re.sub(r" favourite ", " favorite ", text)
+    text = re.sub(r" favorate ", " favorite ", text)
+    text = re.sub(r"[!]+", " ! ", text)
+    text = re.sub(r"[\?]+", " ? ", text)
+    text = re.sub(r"[\.]+", " . ", text)
+    text = re.sub(r"[\,]+", " , ", text)
+    text = re.sub(r"[\-‼!\.\(\’\[\]\)\"#\*/@�\^^;:<>{}`'\+=~|]", " ", text)
+    text = re.sub(r"[\ ]+", " ", text)
+    text = re.sub(r" don't ", " do not ", text)
+    text = re.sub(r" favour ", " favor ", text)
+    
+    text = re.sub(r" isnt ", " is not ", text)
+    text = re.sub(r" its ", " it is ", text)
+    text = re.sub(r" hows ", " how is ", text)
+    
+    return text.strip()#맨 마지막 띄어쓰기 생략
     
     
     

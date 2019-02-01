@@ -4,45 +4,45 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import numpy as np
 import copy
-from utils import attnMask, outputMask, positionalEncoding, sort_batch, restore_batch
+from utils import attnMask, positionalEncoding, sort_batch, restore_batch
 from math import sin, cos
 from submodules import Attention
+from utils import *
+
 
 
 
 
 class RNN_encoder(nn.Module):
-    
-    def __init__(self, num_layers, hidden_dim, voca_size, embedding_dim):
+    def __init__(self, num_layers, hidden_dim, voca_size, embedding_dim, embedding_matrix=None):
         super(RNN_encoder, self).__init__()
         self.num_layers = num_layers
         self.hidden_dim = hidden_dim
         self.voca_size = voca_size
         self.embedding_dim = embedding_dim
         
-        self.Embedding = nn.Embedding(voca_size, embedding_dim)
-        self.Encoder = nn.GRU(embedding_dim, hidden_dim, num_layers=self.num_layers, batch_first=True, bidirectional=True)
+        if embedding_matrix is None:
+            self.Embedding = nn.Embedding(voca_size, embedding_dim)
+        else:
+            self.Embedding = nn.Embedding.from_pretrained(embedding_matrix)
+            
+        self.Encoder = nn.GRU(embedding_dim, hidden_dim, num_layers=num_layers, batch_first=True, bidirectional=True)
 
-    def forward(self, x, batch_lengths=None):
-        batch_lengths = [ x.size(1) for _ in range(x.size(0)) ] if batch_lengths is None else batch_lengths
-        assert isinstance(batch_lengths, list), "batch_lengths should be a list"
+    def forward(self, x):
+        sorted_x, sorted_lengths, sorted_indices = sort_batch(x)
+        sorted_x = self.Embedding(sorted_x)
+        
+        packed_inputs =  pack_padded_sequence(sorted_x, sorted_lengths.tolist(), batch_first=True)
+        packed_outputs, _ = self.Encoder(packed_inputs)
+        context, _ = pad_packed_sequence(packed_outputs, batch_first=True)
+        
+        context = restore_batch(context, sorted_indices)
+        
+        return context
 
-        x = self.Embedding(x)
-        x, batch_lengths, sorted_idx = sort_batch(x, batch_lengths)
-        
-        packed_inputs =  pack_padded_sequence(x, batch_lengths, batch_first=True)
-        packed_outputs, h = self.Encoder(packed_inputs)
-        context, context_lengths = pad_packed_sequence(packed_outputs, batch_first=True)
-        
-        context, context_lengths = restore_batch(context, context_lengths, sorted_idx)
-        
-        return context, context_lengths
-        
-        
         
 
 class RNN_decoder(nn.Module):
-    
     def __init__(self, num_layers, hidden_dim, voca_size, embedding_dim, max_len):
         super(RNN_decoder, self).__init__()
         self.num_layers = num_layers
@@ -52,65 +52,47 @@ class RNN_decoder(nn.Module):
         self.max_len = max_len
         
         self.Embedding = nn.Embedding(voca_size, embedding_dim)
-        self.Decoder = nn.GRU(embedding_dim + 2*hidden_dim, hidden_dim, batch_first=True)
+        self.Decoder = nn.GRU(embedding_dim + 2*hidden_dim, hidden_dim, num_layers, batch_first=True)
         self.Attention = Attention(embedding_dim, hidden_dim)
-        self.energy2voca = nn.Linear(hidden_dim, voca_size)
+        self.output2word = nn.Linear(hidden_dim, voca_size)
         
         
-        
-    def forward(self, x, context, context_lengths, batch_lengths=None, eos=3, train=True):
-        batch_lengths = [ x.size(1) for _ in range(x.size(0)) ] if batch_lengths is None else batch_lengths
-        assert isinstance(batch_lengths, list), "batch_lengths should be a list"
-        
-        
+    def forward(self, x, context, train=True):
         outputs = []
         
-        if train:
-            h = torch.zeros(1, x.size(0), self.hidden_dim)
-            x = self.Embedding(x)
+        if train==True:
+            h = torch.zeros( self.num_layers, x.size(0), self.hidden_dim)
             
             for t in range(x.size(1)):
-                next_input = x[:, t:t+1] # 여기에는 pad가 섞여 있다. (B, 1, E)
-                summary = self.Attention(context, context_lengths, next_input, h) # (B, 1, 2h)
-
-                mask = (t < torch.tensor(batch_lengths)).type(torch.float)
-                concat = torch.cat([next_input, summary], dim=-1) # (B, 1, E+2h) 
-                concat = concat * (mask.view(-1,1,1))
+                next_input = x[:, t:t+1] # 여기에는 pad가 섞여 있다. (B, 1)
+                embedded_input = self.Embedding(next_input) # (B, 1, E)
+                attenton_vector = self.Attention(context, embedded_input, h[0:1]) # (B, 1, 2h), first layer hidden state
                 
-                energy, h = self.Decoder(concat, h) # (B, 1, h) (1, B, h)
-                energy = energy * (mask.view([-1,1,1]))
-                h = h * (mask.view([1,-1,1]))
+                concat_input = torch.cat([embedded_input, attenton_vector], dim=-1) # (B, 1, E+2h) 
+                output, h = self.Decoder(concat_input, h) # (B, 1, h) (1, B, h)
 
-                output = self.energy2voca(energy)
-                outputs.append(output)
+                output = output * ((next_input!=0).type(torch.float)).unsqueeze(-1) # (B, 1, 2h) (B, 1, 1)
+                word = self.output2word(output)
+                outputs.append(word)
                 
         else:
             next_input = x # x.size() = (1,1)
-            h = torch.zeros(1, 1, self.hidden_dim)
+            h = torch.zeros(self.num_layers, 1, self.hidden_dim)
             
             for t in range(self.max_len):
-                next_input = self.Embedding(next_input)
-                summary = self.Attention(context, context_lengths, next_input, h)
+                embedded_input = self.Embedding(next_input)
+                attenton_vector = self.Attention(context, embedded_input, h[0:1])
                 
-                concat = torch.cat([next_input, summary], dim=-1)
-                energy, h = self.Decoder(concat, h)
-                outputs.append(energy)
+                concat_input = torch.cat([embedded_input, attenton_vector], dim=-1)
+                output, h = self.Decoder(concat_input, h)
                 
-                voca = self.energy2voca(energy)
-                next_input = torch.argmax(voca, dim=-1) # 다시 (1,1)
+                word = self.output2word(output)
+                outputs.append(word)
                 
-                if voca == eos: break
+                next_input = torch.argmax(word, dim=-1) # 다시 (1,1)
+                if (next_input.item() == 3) or (next_input.item()==0): # <eos>: 3  <pad>:0
+                    break
                 
+        
         return torch.cat(outputs, dim=1)
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
