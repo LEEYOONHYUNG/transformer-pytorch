@@ -6,13 +6,7 @@ import copy
 from math import sin, cos
 import re
 
-
-def attnMask(energy, batch_lengths):
-    masked_energy = energy.clone()
-    for i, length in enumerate(batch_lengths):
-            masked_energy[i, :, length:] = -np.inf
-    return masked_energy
-
+INF = float('inf')
 
 def positionalEncoding(x):
         PE = torch.zeros_like(x[0])
@@ -22,7 +16,13 @@ def positionalEncoding(x):
                 PE[pos, 2*i+1] = cos(pos / 10000**(2*i/x.size(2)))
         return x + PE
     
-    
+def attnMask(energy, batch_lengths):
+    masked_energy = energy.clone()
+    for i, length in enumerate(batch_lengths):
+            masked_energy[i, :, length:] = -INF
+    return masked_energy
+
+
 def sort_batch(batch):
     batch_lengths = torch.sum(batch!=0, dim=-1)
     sorted_lengths, sorted_indices = torch.sort(batch_lengths, descending=True)
@@ -40,7 +40,7 @@ def restore_batch(sorted_batch, sorted_indices):
     return restored_batch
 
 
-def alignment(tensor, texts):
+def alignment(tensor, texts, device):
     max_len = max([tensor.size(1), texts.size(1)])
     
     pad_tensor = torch.zeros( len(tensor), max_len, tensor.size(2) )
@@ -52,7 +52,7 @@ def alignment(tensor, texts):
     for i, text in enumerate(texts):
         pad_texts[i,:len(text)] = text
 
-    return pad_tensor, pad_texts
+    return pad_tensor.to(device), pad_texts.to(device)
 
 
                   

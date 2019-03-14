@@ -9,28 +9,28 @@ INF = float('inf')
 ##################################################   ENCODER   ##################################################
 #################################################################################################################
 
-class encoderHead(nn.Module):
-    def __init__(self, embedding_dim, dk):
-        super(encoderHead, self).__init__()
+class multiHead_enc(nn.Module):
+    def __init__(self, embedding_dim, dk, num_heads):
+        super(multiHead_enc, self).__init__()
         self.embedding_dim = embedding_dim
         self.dk = dk
         
-        self.Wq = nn.Linear(embedding_dim, dk, bias=False)
-        self.Wk = nn.Linear(embedding_dim, dk, bias=False)
-        self.Wv = nn.Linear(embedding_dim, dk, bias=False)
+        self.Wq = nn.Linear(embedding_dim, dk * num_heads, bias=False)
+        self.Wk = nn.Linear(embedding_dim, dk * num_heads, bias=False)
+        self.Wv = nn.Linear(embedding_dim, dk * num_heads, bias=False)
         
     def forward(self, x):
-        mask = 1 - (x.eq(0).all(dim=2, keepdim=True).type(torch.float))
-        Q, K, V = self.Wq(x)*mask, self.Wk(x)*mask, self.Wv(x)*mask
+        Q, K, V = self.Wq(x), self.Wk(x), self.Wv(x)
         
         energy = Q.bmm(K.permute(0,2,1))
+        
         for batch in energy:
             length = torch.sum(batch[0]!=0, dim=-1)
             batch[:, length:] = -INF
         
         score = F.softmax( energy / (self.dk**0.5), dim=-1)
 
-        return score.bmm(V) * mask
+        return score.bmm(V)
 
 
 class encoderLayer(nn.Module):
@@ -41,7 +41,7 @@ class encoderLayer(nn.Module):
         self.num_heads = num_heads
         self.dk = embedding_dim // num_heads
 
-        self.Heads = nn.ModuleList([encoderHead(embedding_dim, self.dk) for _ in range(num_heads)])
+        self.Heads = multiHead_enc(embedding_dim, self.dk, num_heads)
         self.LN1 = nn.LayerNorm(embedding_dim)
         
         self.FC1 = nn.Linear(embedding_dim, embedding_dim)
@@ -49,12 +49,11 @@ class encoderLayer(nn.Module):
         self.LN2 = nn.LayerNorm(embedding_dim)
     
     def forward(self, x):
-        mask = 1 - (x.eq(0).all(dim=2, keepdim=True).type(torch.float))
-        z = torch.cat( [ self.Heads[i](x) for i in range(self.num_heads) ], dim=-1 )
+        z = self.Heads(x)
         x = self.LN1(x+z)
         
-        z = F.relu(self.FC1(x)) * mask
-        z = self.FC2(z) * mask
+        z = F.relu(self.FC1(x))
+        z = self.FC2(z)
         output = self.LN2(x+z)
         
         return output
@@ -64,48 +63,46 @@ class encoderLayer(nn.Module):
 #################################################################################################################
 ##################################################   DECODER   ##################################################
 #################################################################################################################
-class attnHead(nn.Module):
-    def __init__(self, embedding_dim, dk):
-        super(attnHead, self).__init__()
+class multiHead_att(nn.Module):
+    def __init__(self, embedding_dim, dk, num_heads):
+        super(multiHead_att, self).__init__()
         self.embedding_dim = embedding_dim
         self.dk = dk
         
-        self.Wq = nn.Linear(embedding_dim, dk, bias=False)
-        self.Wk = nn.Linear(embedding_dim, dk, bias=False)
-        self.Wv = nn.Linear(embedding_dim, dk, bias=False)
+        self.Wq = nn.Linear(embedding_dim, dk * num_heads, bias=False)
+        self.Wk = nn.Linear(embedding_dim, dk * num_heads, bias=False)
+        self.Wv = nn.Linear(embedding_dim, dk * num_heads, bias=False)
         
     def forward(self, x):
-        mask = 1 - (x.eq(0).all(dim=2, keepdim=True).type(torch.float))
-        Q, K, V = self.Wq(x)*mask, self.Wk(x)*mask, self.Wv(x)*mask
+        Q, K, V = self.Wq(x), self.Wk(x), self.Wv(x)
         
         energy = Q.bmm(K.permute(0,2,1))
-        for batch in energy:
-            length = torch.sum(batch[0]!=0, dim=-1)
-            batch[:, length:] = -INF
+        lengths = torch.sum(energy[:,0]!=0, dim=-1)
+        
+        for i, batch in enumerate(energy):
+            batch[:, lengths[i]:] = -INF
             
         for i in range(len(energy[0])):
-            for j in range(i+1, len(energy[0])):
-                energy[:,i,j] = -INF
+            energy[:, i, i+1:] = -INF
         
         score = F.softmax( energy / (self.dk**0.5), dim=-1)
         
-        return score.bmm(V) * mask
+        return score.bmm(V) 
     
 
-class decoderHead(nn.Module):
-    def __init__(self, embedding_dim, dk):
-        super(decoderHead, self).__init__()
+class multiHead_dec(nn.Module):
+    def __init__(self, embedding_dim, dk, num_heads):
+        super(multiHead_dec, self).__init__()
         self.embedding_dim = embedding_dim
         self.dk = dk
         
-        self.Wq = nn.Linear(embedding_dim, dk, bias=False)
-        self.Wk = nn.Linear(embedding_dim, dk, bias=False)
-        self.Wv = nn.Linear(embedding_dim, dk, bias=False)
+        self.Wq = nn.Linear(embedding_dim, dk * num_heads, bias=False)
+        self.Wk = nn.Linear(embedding_dim, dk * num_heads, bias=False)
+        self.Wv = nn.Linear(embedding_dim, dk * num_heads, bias=False)
         
     def forward(self, x, context):
-        mask = 1 - (x.eq(0).all(dim=2, keepdim=True).type(torch.float))
-        Q = self.Wq(x)*mask
-        K, V = self.Wk(context)*mask, self.Wv(context)*mask
+        Q = self.Wq(x)
+        K, V = self.Wk(context), self.Wv(context)
         
         energy = Q.bmm(K.permute(0,2,1))
         for batch in energy:
@@ -114,7 +111,7 @@ class decoderHead(nn.Module):
         
         score = F.softmax( energy / (self.dk**0.5), dim=-1)
         
-        return score.bmm(V) * mask
+        return score.bmm(V)
 
 
     
@@ -126,10 +123,10 @@ class decoderLayer(nn.Module):
         self.num_heads = num_heads
         self.dk = embedding_dim // num_heads
         
-        self.attnHeads = nn.ModuleList([attnHead(embedding_dim, self.dk) for _ in range(num_heads)])
+        self.attnHeads = multiHead_att(embedding_dim, self.dk, num_heads)
         self.LN1 = nn.LayerNorm(embedding_dim)
 
-        self.decoderHeads = nn.ModuleList([decoderHead(embedding_dim, self.dk) for _ in range(num_heads)])
+        self.decoderHeads = multiHead_dec(embedding_dim, self.dk, num_heads)
         self.LN2 = nn.LayerNorm(embedding_dim)
         
         self.FC1 = nn.Linear(embedding_dim, embedding_dim)
@@ -137,15 +134,14 @@ class decoderLayer(nn.Module):
         self.LN3 = nn.LayerNorm(embedding_dim)
     
     def forward(self, x, context):
-        mask = 1 - (x.eq(0).all(dim=2, keepdim=True).type(torch.float))
-        z = torch.cat( [ self.attnHeads[i](x) for i in range(self.num_heads) ], dim=-1 )
+        z = self.attnHeads(x)
         x = self.LN1(x+z)
         
-        z = torch.cat( [ self.decoderHeads[i](x, context) for i in range(self.num_heads) ], dim=-1 )
+        z = self.decoderHeads(x, context)
         x = self.LN2(x+z)
         
-        z = F.relu(self.FC1(x)) * mask
-        z = self.FC2(z) * mask
+        z = F.relu(self.FC1(x))
+        z = self.FC2(z)
         
         output = self.LN3(x+z)
         
@@ -153,29 +149,9 @@ class decoderLayer(nn.Module):
     
     
     
-    
-class Attention(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim):
-        super(Attention, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.scoring = nn.Linear(embedding_dim + 3*hidden_dim, 1)
-    
-    def forward(self, context, x, h):
-        h = h.view(-1, 1, self.hidden_dim) # (Batch_size, 1, hidden_dim)
-        inputs = torch.cat([x,h], dim=-1).repeat(1, context.size(1), 1) # (Batch_size, max_len, embedding_dim + hidden_dim)
 
-        scores = self.scoring(torch.cat([inputs, context], dim=-1)) # (Batch_size, max_len, embedding_dim + 3*hidden_dim) -> (Batch_size, max_len, 1)
-        
-        context_lengths = torch.sum((context!=0)[:,:,0], dim=-1).tolist()
-        for i, length in enumerate(context_lengths):
-            scores[i, length:] = -INF
-            
-        alpha = F.softmax(scores, dim=1) # (Batch_size, max_len, 1)
+    
 
-        # alpha: (Batch_size, max_len, 1), context: (Batch_size, max_len, 2*h)
-        attention_vector = torch.sum( (alpha * context), dim=1 ).unsqueeze(1)
-        
-        return  attention_vector # (Batch_size, 1, 2*h)
         
         
     

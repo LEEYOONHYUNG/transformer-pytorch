@@ -6,11 +6,10 @@ import numpy as np
 import re
 from utils import clean_text
 
-TEXT_SAMPLE = list(range(100000, 150000, 1000))
-
+TEXT_SAMPLE = list(range(0, 150000, 15))
     
 class TextPairs(Dataset):
-    def __init__(self, num_voca):
+    def __init__(self, num_voca, train=True, toy=True):
         super(TextPairs, self).__init__()
         self.dataset = {'en':[], 'de':[]}
         self.voca = {'en':[], 'de':[]}
@@ -20,8 +19,11 @@ class TextPairs(Dataset):
         
         with open('Data/en-de.txt', 'r') as f:
             for i,line in enumerate(f):
-                if i not in TEXT_SAMPLE:
-                    continue
+                
+                if toy==True:
+                    if i not in TEXT_SAMPLE:
+                        continue
+                        
                 text_en, text_de = line.split('\t')
                 text_en, text_de = word_tokenize(clean_text(text_en)), word_tokenize(clean_text(text_de))
                 self.dataset['en'].append(text_en)
@@ -30,8 +32,8 @@ class TextPairs(Dataset):
                 if len(text_en) > self.max_len: 
                     self.max_len = len(text_en)
                     
-                if len(text_de)+2 > self.max_len: 
-                    self.max_len = len(text_de)+2
+                if len(text_de)+1 > self.max_len: 
+                    self.max_len = len(text_de)+1
                     
                 self.voca['en'].extend(text_en)
                 self.voca['de'].extend(text_de)
@@ -48,52 +50,38 @@ class TextPairs(Dataset):
         self.word2id['de'] = dict( [ (w, i) for i, w in enumerate(self.voca['de'])] )
         
         
+        if train==True:
+            self.dataset['en'] =  self.dataset['en'][:int(self._len*0.8)]
+            self.dataset['de'] =  self.dataset['de'][:int(self._len*0.8)]
+            self._len = len(self.dataset['en'])
+        else:
+            self.dataset['en'] =  self.dataset['en'][int(self._len*0.8):]
+            self.dataset['de'] =  self.dataset['de'][int(self._len*0.8):]
+            self._len = len(self.dataset['en'])
+            
+        
     def __len__(self):
         return self._len
         
+        
     def __getitem__(self, idx):
-        eng_text = self.text2id( self.dataset['en'][idx], 'en' )
-        de_text = self.text2id( self.dataset['de'][idx], 'de' )
-        return eng_text, de_text
+        en_text = torch.zeros(self.max_len, dtype=torch.long)
+        de_text = torch.zeros(self.max_len+1, dtype=torch.long)
+        
+        en = self.text2id( self.dataset['en'][idx], 'en' )
+        de = self.text2id( self.dataset['de'][idx], 'de' )
+        
+        en_text[:len(en)] = en
+        de_text[:len(de)] = de
+        
+        return {'en':en_text, 'de':de_text}
+        
         
     def text2id(self, text, language):
         if language=='en':
-            return [ self.word2id[language].get(w) if self.word2id[language].get(w) is not None else 1 for w in text ]
+            return torch.Tensor([ self.word2id[language].get(w) if self.word2id[language].get(w) is not None else 1 for w in text ])
         elif language=='de':
-            return [2] + [ self.word2id[language].get(w) if self.word2id[language].get(w) is not None else 1 for w in text ] + [3]
+            return torch.Tensor([2] + [ self.word2id[language].get(w) if self.word2id[language].get(w) is not None else 1 for w in text ] + [3])
 
-        
-        
-
-def padding(texts):
-    max_len = max(map(len, texts))
-    padded_text=  torch.zeros(len(texts), max_len, dtype = torch.long)
-    
-    for i, text in enumerate(texts):
-        padded_text[i, :len(text)] = torch.LongTensor(text)
-    
-    return padded_text
-
-
-
-
-def pad_batch(batch):
-    eng_text, de_text = list(zip(*batch))
-    return padding(eng_text), padding(de_text)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
         
         

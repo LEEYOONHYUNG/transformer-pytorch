@@ -21,14 +21,14 @@ class Transformer_encoder(nn.Module):
         else:
             self.Embedding = nn.Embedding.from_pretrained(embedding_matrix)
             
-        self.Layers = nn.Sequential(*[encoderLayer(embedding_dim, num_heads) for _ in range(num_layers)])
+        self.Layers = nn.ModuleList([encoderLayer(embedding_dim, num_heads) for _ in range(num_layers)])
 
-    def forward(self, x):
+    def forward(self, x, PE):
         mask = (x!=0).unsqueeze(-1).type(torch.float)
-        x = self.Embedding(x)
-        x = positionalEncoding(x) * mask
-        x = self.Layers(x)
-
+        x = (self.Embedding(x) + PE) * mask
+        
+        for i, layer in enumerate(self.Layers, 1):
+            x = layer(x) * mask
         return x
         
         
@@ -47,30 +47,27 @@ class Transformer_decoder(nn.Module):
         self.Layers = nn.ModuleList([decoderLayer(embedding_dim, num_heads) for _ in range(num_layers)])
         self.output2word = nn.Linear(embedding_dim, voca_size)
         
-
         
-    def forward(self, x, context, train=True):
+    def forward(self, x, context, PE, device, train=True):
         if train==True:
             mask = (x!=0).unsqueeze(-1).type(torch.float)
-            x = self.Embedding(x)
-            x = positionalEncoding(x) * mask
+            x = (self.Embedding(x) + PE) * mask
 
             for layer in self.Layers:
-                x = layer(x, context)
+                x = layer(x, context) * mask
             
             return self.output2word(x)
         
         else:
-            input = x
+            inputs = x
             outputs = []
             
             for t in range(self.max_len):
-                mask = (input!=0).unsqueeze(-1).type(torch.float)
-                x = self.Embedding(input)
-                x = positionalEncoding(x) * mask
+                mask = (inputs!=0).unsqueeze(-1).type(torch.float)
+                x = (self.Embedding(inputs) + PE) * mask
 
                 for layer in self.Layers:
-                    x = layer(x, context)
+                    x = layer(x, context) * mask
 
                 output = x[0:1, t:t+1]
                 
@@ -83,7 +80,7 @@ class Transformer_decoder(nn.Module):
                     break
                     
                 if (t+1)< self.max_len:
-                    input[0,t+1] = next_token
+                    inputs[0,t+1] = next_token
 
             return torch.cat(outputs, dim=1)
             
