@@ -54,4 +54,4 @@ python test.py --ckpt log/1/iwslt2016_E17L2.78-26078 (OR yourCkptFile OR yourCkp
 |26.69|22.46|
 
 ## Notes
-* Beam decoding will be added soon.
+
