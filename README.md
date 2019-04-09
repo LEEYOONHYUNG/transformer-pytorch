@@ -1,4 +1,4 @@
-# A Pytorch Implementation of [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
+# A Pytorch Implementation of [Transformer](https://arxiv.org/abs/1706.03762)
 
 ## Requirements
 * python==3.6.8
