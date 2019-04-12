@@ -10,7 +10,7 @@
 ## Training Loss Curve with Transformer
 <center><img src=./img/train_tf.JPG width="300" height="300">
 ## Bleu score on devset with Transformer
-<center><img src=./img/belu_tf.JPG width="300" height="300">
+<center><img src=./img/bleu_tf.JPG width="300" height="300">
 ## Training Loss Curve with RNN
 <center><img src=./img/train_rnn.JPG width="300" height="300">
 ## Bleu score on devset with RNN
