@@ -41,7 +41,7 @@ SAMPLE = [15, 5015, 10015]
 print(f'\nElapsed time: {datetime.now() - start}')
 print(f'\nData_length: {len(train_pairs)}')
 
-with open('Data/glove.6B.200d.pkl', 'rb') as f:
+with open('Data/Glove/glove.6B.200d.pkl', 'rb') as f:
     glove = pkl.load(f)
 
 embedding_matrix = torch.zeros(args.voca_size, args.edim)
@@ -107,12 +107,12 @@ for epoch in range(args.nepoch):
         
         loss.backward()
         train_loss += float(loss)/150
-        train_losses.append(train_loss)
 
         optimizer.step()
         
         
-        if (i+1) % 150==0: # len(trainLoader) = 622
+        if (i+1) % 150==0: # len(trainLoader) = 398
+            train_losses.append(train_loss)
             references, hypotheses = [], []
             val_loss = 0
             model = model.to(cpu)
@@ -129,7 +129,6 @@ for epoch in range(args.nepoch):
                     targets = de_text[:,1:]
                     loss = criterion( preds_loss, targets.contiguous().view(-1))
                     val_loss += float(loss)/len(valLoader)
-                    val_losses.append(val_loss)
 
                     tokens = torch.argmax(preds[0], dim=-1)
                     text = [ val_pairs.voca['de'][t] for t in tokens if t not in [0,2,3]]
@@ -144,6 +143,8 @@ for epoch in range(args.nepoch):
                         print('Pred:\t', hypothesis)
                         print('Target:\t', reference[0])
                 
+                
+            val_losses.append(val_loss)
             BLEUS.append(corpus_bleu(references, hypotheses))
             print(f'Train loss:\t{train_losses[-1]:.3f}')
             print(f'Val loss:\t{val_losses[-1]:.3f}')
