@@ -53,8 +53,6 @@ def alignment(tensor, texts, device):
         pad_texts[i,:len(text)] = text
 
     return pad_tensor.to(device), pad_texts.to(device)
-
-
                   
              
         
@@ -67,41 +65,35 @@ def alignment(tensor, texts, device):
 def clean_text(text):
     text = text.lower()
     text = re.sub(r"’", "'", text)
-    text = re.sub(r" i'm ", " i am ", text)
-    text = re.sub(r" im ", " i am ", text)
-    text = re.sub(r" he's ", " he is ", text)
-    text = re.sub(r" ain't ", " are not ", text)
-    text = re.sub(r" she's ", " she is ", text)
-    text = re.sub(r" it's ", " it is ", text)
-    text = re.sub(r" that's ", " that is ", text)
-    text = re.sub(r" what's ", " what is ", text)
-    text = re.sub(r" where's ", " where is ", text)
-    text = re.sub(r" how's ", " how is ", text)
-    text = re.sub(r"\'ll", " will ", text)
-    text = re.sub(r"\'ve", " have ", text)
-    text = re.sub(r"\'re", " are ", text)
-    text = re.sub(r"\'d", " would ", text)
-    text = re.sub(r"\'re", " are ", text)
-    text = re.sub(r" won't ", " will not ", text)
-    text = re.sub(r" can't ", " can not ", text)
-    text = re.sub(r"n't ", " not ", text)
-    text = re.sub(r" couldnt ", " could not ", text)
-    text = re.sub(r" shouldnt ", " should not ", text)
-    text = re.sub(r" didnt ", " did not ", text)
-    text = re.sub(r" favourite ", " favorite ", text)
-    text = re.sub(r" favorate ", " favorite ", text)
+    text = re.sub(r"i'm ", "i am ", text)
+    text = re.sub(r"he's ", "he is ", text)
+    text = re.sub(r"she's ", "she is ", text)
+    text = re.sub(r"isn't ", "is not ", text)
+    text = re.sub(r"aren't ", "are not ", text)
+    text = re.sub(r"ain't ", "are not ", text)
+    text = re.sub(r"it's ", "it is ", text)
+    text = re.sub(r"that's ", "that is ", text)
+    text = re.sub(r"what's ", "what is ", text)
+    text = re.sub(r"where's ", "where is ", text)
+    text = re.sub(r"who's ", "who is ", text)
+    text = re.sub(r"how's ", "how is ", text)
+    text = re.sub(r"\'ll ", " will ", text)
+    text = re.sub(r"\'ve ", " have ", text)
+    text = re.sub(r"\'re ", " are ", text)
+    text = re.sub(r"\'d ", " would ", text)
+    text = re.sub(r"\'re ", " are ", text)
+    text = re.sub(r"won't ", "will not ", text)
+    text = re.sub(r"can't ", "can not ", text)
+    text = re.sub(r"couldn't ", "could not ", text)
+    text = re.sub(r"shouldn't ", "should not ", text)
+    text = re.sub(r"didn't ", "did not ", text)
     text = re.sub(r"[!]+", " ! ", text)
     text = re.sub(r"[\?]+", " ? ", text)
     text = re.sub(r"[\.]+", " . ", text)
     text = re.sub(r"[\,]+", " , ", text)
     text = re.sub(r"[\-‼!\.\(\’\[\]\)\"#\*/@�\^^;:<>{}`'\+=~|]", " ", text)
     text = re.sub(r"[\ ]+", " ", text)
-    text = re.sub(r" don't ", " do not ", text)
-    text = re.sub(r" favour ", " favor ", text)
-    
-    text = re.sub(r" isnt ", " is not ", text)
-    text = re.sub(r" its ", " it is ", text)
-    text = re.sub(r" hows ", " how is ", text)
+    text = re.sub(r"don't ", "do not ", text)
     
     return text.strip()#맨 마지막 띄어쓰기 생략
     

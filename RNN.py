@@ -87,11 +87,11 @@ class RNN_decoder(nn.Module):
         self.output2word = nn.Linear(hidden_dim, voca_size)
         
         
-    def forward(self, x, context, device, train=True):
+    def forward(self, x, context, train=True):
         outputs = []
         
         if train==True:
-            h = torch.zeros( self.num_layers, x.size(0), self.hidden_dim).to(device)
+            h = x.new_zeros( self.num_layers, x.size(0), self.hidden_dim ).float()
             
             for t in range(x.size(1)):
                 next_input = x[:, t:t+1] # 여기에는 pad가 섞여 있다. (B, 1)
@@ -108,7 +108,7 @@ class RNN_decoder(nn.Module):
                 
         else:
             next_input = x # x.size() = (1,1)
-            h = torch.zeros(self.num_layers, 1, self.hidden_dim).to(device)
+            h = x.new_zeros(self.num_layers, 1, self.hidden_dim).float()
             
             for t in range(self.max_len):
                 embedded_input = self.Embedding(next_input)

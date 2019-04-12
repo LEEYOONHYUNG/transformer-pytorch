@@ -48,7 +48,7 @@ class Transformer_decoder(nn.Module):
         self.output2word = nn.Linear(embedding_dim, voca_size)
         
         
-    def forward(self, x, context, PE, device, train=True):
+    def forward(self, x, context, PE, train=True):
         if train==True:
             mask = (x!=0).unsqueeze(-1).type(torch.float)
             x = (self.Embedding(x) + PE) * mask

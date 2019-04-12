@@ -5,6 +5,7 @@ from nltk import word_tokenize
 import numpy as np
 import re
 from utils import clean_text
+import copy
 
 TEXT_SAMPLE = list(range(0, 150000, 15))
     
@@ -18,28 +19,28 @@ class TextPairs(Dataset):
         self.max_len = 0
         
         with open('Data/en-de.txt', 'r') as f:
-            for i,line in enumerate(f):
-                
+            lines = f.read().splitlines()
+            for i,line in enumerate(lines):
                 if toy==True:
                     if i not in TEXT_SAMPLE:
                         continue
                         
-                text_en, text_de = line.split('\t')
-                text_en, text_de = word_tokenize(clean_text(text_en)), word_tokenize(clean_text(text_de))
-                self.dataset['en'].append(text_en)
-                self.dataset['de'].append(text_de)
+                text_en, text_de = clean_text(line).split('\t')
+                token_en, token_de = word_tokenize(text_en.strip()), word_tokenize(text_de.strip())
                 
-                if len(text_en) > self.max_len: 
-                    self.max_len = len(text_en)
+                self.dataset['en'].append(token_en)
+                self.dataset['de'].append(token_de)
+                
+                if len(token_en) > self.max_len: 
+                    self.max_len = len(token_en)
                     
-                if len(text_de)+1 > self.max_len: 
-                    self.max_len = len(text_de)+1
+                if len(token_de)+1 > self.max_len: 
+                    self.max_len = len(token_de)+1
                     
-                self.voca['en'].extend(text_en)
-                self.voca['de'].extend(text_de)
+                self.voca['en'].extend(token_en)
+                self.voca['de'].extend(token_de)
                 self._len += 1
             
-                    
         self.voca['en'] = list(list(zip(*(Counter(self.voca['en']).most_common(num_voca-4))))[0])
         self.voca['de'] = list(list(zip(*(Counter(self.voca['de']).most_common(num_voca-4))))[0])
         
@@ -49,16 +50,23 @@ class TextPairs(Dataset):
         self.word2id['en'] = dict( [ (w, i) for i, w in enumerate(self.voca['en'])] )
         self.word2id['de'] = dict( [ (w, i) for i, w in enumerate(self.voca['de'])] )
         
+        self.hyp2ref = dict([ (' '.join([t if t in self.voca['en'] else '<unk>' for t in k]), []) for k in self.dataset['en']])
+        
+        for k, v in zip(self.dataset['en'], self.dataset['de']):
+            key = [t if t in self.voca['en'] else '<unk>' for t in k]
+            self.hyp2ref[' '.join(key)].append(v)
         
         if train==True:
-            self.dataset['en'] =  self.dataset['en'][:int(self._len*0.8)]
-            self.dataset['de'] =  self.dataset['de'][:int(self._len*0.8)]
-            self._len = len(self.dataset['en'])
-        else:
-            self.dataset['en'] =  self.dataset['en'][int(self._len*0.8):]
-            self.dataset['de'] =  self.dataset['de'][int(self._len*0.8):]
+            self.dataset['en'] =  self.dataset['en'][:int(self._len*0.9)]
+            self.dataset['de'] =  self.dataset['de'][:int(self._len*0.9)]
             self._len = len(self.dataset['en'])
             
+        else:
+            self.dataset['en'] =  self.dataset['en'][int(self._len*0.9):]
+            self.dataset['de'] =  self.dataset['de'][int(self._len*0.9):]
+            self._len = len(self.dataset['en'])
+            
+        
         
     def __len__(self):
         return self._len
