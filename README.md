@@ -8,12 +8,10 @@
 * python Transformer_WMT.py ( python RNN_WMT.py )
 
 ## Training Loss Curve with Transformer
-![train_tf](./img/train_tf.JPG)
+<center><img src=./img/train_tf.JPG width="300" height="300">
 ## Bleu score on devset with Transformer
-![bleu_tf](./img/bleu_tf.JPG)
-
+<center><img src=./img/belu_tf.JPG width="300" height="300">
 ## Training Loss Curve with RNN
-![train_rnn](./img/train_rnn.JPG)
-<img src=./img/train_rnn.JPG width="250" height="250">
+<center><img src=./img/train_rnn.JPG width="300" height="300">
 ## Bleu score on devset with RNN
-![bleu_rnn](./img/bleu_rnn.JPG)
+<center><img src=./img/bleu_rnn.JPG width="300" height="300">
