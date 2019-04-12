@@ -42,6 +42,6 @@ wget -qO- --show-progress https://dl.dropbox.com/s/efv2gmq5hu3np43/log.tar.gz | 
 ![bleu_tf](img src=./img/bleu_tf.JPG, width="60%")
 
 ## Training Loss Curve with Transformer
-![train_rnn](img src=./img/train_rnn.JPG, width="60%")
+![train_rnn]<img src=./img/train_rnn.JPG width="60%">
 ## Bleu score on devset with Transformer
-![bleu_rnn](img src=./img/bleu_rnn.JPG, width="60%")
+![bleu_rnn]<img src=./img/bleu_rnn.JPG width="60%">
