@@ -11,7 +11,7 @@
 <center><img src=./img/train_tf.JPG width="300" height="300"></center>
 
 ## Bleu score on devset with Transformer
-<center><img src=./img/bleu_tf.JPG width="300" height="300"></center>
+<p align="center"><img src=./img/bleu_tf.JPG width="300" height="300"></p>
 
 ## Training Loss Curve with RNN
 <center><img src=./img/train_rnn.JPG width="300" height="300"></center>
