@@ -14,6 +14,6 @@
 
 ## Training Loss Curve with RNN
 ![train_rnn](./img/train_rnn.JPG)
-<img src=./img/train_rnn.JPG width="50" height="50">
+<img src=./img/train_rnn.JPG width="250" height="250">
 ## Bleu score on devset with RNN
 ![bleu_rnn](./img/bleu_rnn.JPG)
