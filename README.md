@@ -24,6 +24,7 @@ It should create two folders `iwslt2016/prepro` and `iwslt2016/segmented`.
 ```
 python train.py
 ```
+
 Check `hparams.py` to see which parameters are possible. For example,
 ```
 python train.py --logdir myLog --batch_size 256 --dropout_rate 0.5
@@ -35,23 +36,12 @@ wget -qO- --show-progress https://dl.dropbox.com/s/efv2gmq5hu3np43/log.tar.gz | 
 ```
 
 
-## Training Loss Curve
+## Training Loss Curve with Transformer
+![train_tf]<img src=./img/train_tf.JPG width="60%" height="60%">
+## Bleu score on devset with Transformer
+![bleu_tf]<img src=./img/bleu_tf.JPG width="60%" height="60%">
 
-## Bleu score on devset
-
-## Attention heatmap
-
-## Inference (=test)
-* Run
-```
-python test.py --ckpt log/1/iwslt2016_E17L2.78-26078 (OR yourCkptFile OR yourCkptFileDirectory)
-```
-
-## Results
-
-|tst2013 (dev) | tst2014 (test) |
-|--|--|
-|26.69|22.46|
-
-## Notes
-
+## Training Loss Curve with Transformer
+![train_rnn]<img src=./img/train_rnn.JPG width="60%" height="60%">
+## Bleu score on devset with Transformer
+![bleu_rnn]<img src=./img/bleu_rnn.JPG width="60%" height="60%">
