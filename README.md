@@ -6,7 +6,6 @@
 
 ## Training
 * python Transformer_WMT.py ( python RNN_WMT.py )
-```
 
 ## Training Loss Curve with Transformer
 ![train_tf](./img/train_tf.JPG)
