@@ -5,16 +5,16 @@
 * torch==1.0.1
 
 ## Training
-* python Transformer_WMT.py ( python RNN_WMT.py )
+* python Transformer_WMT.py (or python RNN_WMT.py )
 
 ## Training Loss Curve with Transformer
-<p align="center"><img src=./img/train_tf.JPG width="300" height="300"></p>
+<p align="center"><img src=./img/train_tf.JPG width="450" height="450"></p>
 
 ## Bleu score on devset with Transformer
-<p align="center"><img src=./img/bleu_tf.JPG width="300" height="300"></p>
+<p align="center"><img src=./img/bleu_tf.JPG width="450" height="450"></p>
 
 ## Training Loss Curve with RNN
-<p align="center"><img src=./img/train_rnn.JPG width="300" height="300"></p>
+<p align="center"><img src=./img/train_rnn.JPG width="450" height="450"></p>
 
 ## Bleu score on devset with RNN
-<p align="center"><img src=./img/bleu_rnn.JPG width="300" height="300"></p>
+<p align="center"><img src=./img/bleu_rnn.JPG width="450" height="450"></p>
