@@ -9,7 +9,7 @@
 ```
 bash download.sh
 ```
-[bleu_tf](./img/bleu_tf.JPG)
+![bleu_tf](./img/bleu_tf.JPG)
  It should be extracted to `iwslt2016/de-en` folder automatically.
 * STEP 2. Run the command below to create preprocessed train/eval/test data.
 ```
